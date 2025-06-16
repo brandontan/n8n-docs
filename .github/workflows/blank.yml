@@ -16,15 +16,33 @@ jobs:
           git fetch upstream
           git checkout master
           
-          # Reset to upstream/main but preserve our workflow files
-          git checkout upstream/main -- .
-          git checkout HEAD -- .github/workflows/
+          # Create a temporary branch for syncing
+          git checkout -b sync-temp
           
-          # Commit and push the changes
+          # Reset to upstream/main
+          git reset --hard upstream/main
+          
+          # Remove problematic workflow files that cause permission issues
+          rm -rf .github/workflows/build-test.yml
+          rm -rf .github/workflows/lint.yml
+          rm -rf .github/workflows/lychee.yml
+          rm -rf .github/workflows/lychee-pr-check.yml
+          rm -rf .github/workflows/lexi.yml
+          rm -rf .github/workflows/support.yml
+          
+          # Restore our sync workflow
+          git checkout master -- .github/workflows/blank.yml
+          
+          # Commit the sync
           git add -A
-          if ! git diff --cached --quiet; then
-            git commit -m "Sync with upstream: $(date)"
-            git push origin master
-          else
-            echo "No changes to sync"
-          fi
+          git commit -m "Sync with upstream: $(date)" || echo "No changes to commit"
+          
+          # Switch back to master and merge
+          git checkout master
+          git merge sync-temp --strategy=ours -m "Merge sync changes"
+          
+          # Push the changes
+          git push origin master
+          
+          # Cleanup
+          git branch -d sync-temp
