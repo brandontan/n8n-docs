@@ -12,17 +12,19 @@ jobs:
         run: |
           git config user.name "Brandon Tan"
           git config user.email "brandontan@gmail.com"
+          git config pull.rebase false
           git remote add upstream https://github.com/n8n-io/n8n-docs.git
           git fetch upstream
           git checkout master
           
           # Save our current workflow files
-          cp -r .github/workflows /tmp/our_workflows
+          mkdir -p /tmp/our_workflows
+          cp -r .github/workflows/* /tmp/our_workflows/ 2>/dev/null || true
           
-          # Pull all changes from upstream/main
-          git pull upstream main --allow-unrelated-histories --strategy=recursive -X theirs
+          # Merge changes from upstream/main using theirs strategy for conflicts
+          git merge upstream/main --allow-unrelated-histories --strategy=recursive -X theirs -m "Sync with upstream: $(date)"
           
-          # Remove the problematic workflow files from upstream
+          # Remove the problematic workflow files from upstream that cause permission issues
           rm -f .github/workflows/build-test.yml
           rm -f .github/workflows/lint.yml
           rm -f .github/workflows/lychee.yml
@@ -30,17 +32,20 @@ jobs:
           rm -f .github/workflows/lexi.yml
           rm -f .github/workflows/support.yml
           
-          # Restore our workflow files
-          cp -r /tmp/our_workflows/* .github/workflows/
+          # Ensure our workflows directory exists
+          mkdir -p .github/workflows
           
-          # Stage and commit all changes
+          # Restore our workflow files
+          cp /tmp/our_workflows/* .github/workflows/ 2>/dev/null || true
+          
+          # Stage all changes
           git add -A
           
-          # Only commit if there are changes
+          # Only commit and push if there are changes
           if ! git diff --cached --quiet; then
-            git commit -m "Sync with upstream: $(date) - removed problematic workflow files"
+            git commit -m "Remove problematic workflow files and restore our workflows"
             git push origin master
-            echo "✅ Successfully synced with upstream"
+            echo "✅ Successfully synced with upstream and cleaned up workflows"
           else
-            echo "ℹ️ No changes to sync"
+            echo "ℹ️ No additional changes after workflow cleanup"
           fi
