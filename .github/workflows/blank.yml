@@ -16,33 +16,31 @@ jobs:
           git fetch upstream
           git checkout master
           
-          # Create a temporary branch for syncing
-          git checkout -b sync-temp
+          # Save our current workflow files
+          cp -r .github/workflows /tmp/our_workflows
           
-          # Reset to upstream/main
-          git reset --hard upstream/main
+          # Pull all changes from upstream/main
+          git pull upstream main --allow-unrelated-histories --strategy=recursive -X theirs
           
-          # Remove problematic workflow files that cause permission issues
-          rm -rf .github/workflows/build-test.yml
-          rm -rf .github/workflows/lint.yml
-          rm -rf .github/workflows/lychee.yml
-          rm -rf .github/workflows/lychee-pr-check.yml
-          rm -rf .github/workflows/lexi.yml
-          rm -rf .github/workflows/support.yml
+          # Remove the problematic workflow files from upstream
+          rm -f .github/workflows/build-test.yml
+          rm -f .github/workflows/lint.yml
+          rm -f .github/workflows/lychee.yml
+          rm -f .github/workflows/lychee-pr-check.yml
+          rm -f .github/workflows/lexi.yml
+          rm -f .github/workflows/support.yml
           
-          # Restore our sync workflow
-          git checkout master -- .github/workflows/blank.yml
+          # Restore our workflow files
+          cp -r /tmp/our_workflows/* .github/workflows/
           
-          # Commit the sync
+          # Stage and commit all changes
           git add -A
-          git commit -m "Sync with upstream: $(date)" || echo "No changes to commit"
           
-          # Switch back to master and merge
-          git checkout master
-          git merge sync-temp --strategy=ours -m "Merge sync changes"
-          
-          # Push the changes
-          git push origin master
-          
-          # Cleanup
-          git branch -d sync-temp
+          # Only commit if there are changes
+          if ! git diff --cached --quiet; then
+            git commit -m "Sync with upstream: $(date) - removed problematic workflow files"
+            git push origin master
+            echo "✅ Successfully synced with upstream"
+          else
+            echo "ℹ️ No changes to sync"
+          fi
