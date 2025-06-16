@@ -1,0 +1,18 @@
+name: Sync with Upstream
+on: workflow_dispatch
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Sync
+        run: |
+          git config user.name "Brandon Tan"
+          git config user.email "brandontan@gmail.com"
+          git remote add upstream https://github.com/n8n-io/n8n-docs.git
+          git fetch upstream
+          git checkout master
+          git reset --hard upstream/main
+          git push origin master --force
